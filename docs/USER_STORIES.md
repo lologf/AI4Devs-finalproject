@@ -13,11 +13,11 @@
 |---|---|---|---|---|---|
 | **E1 · Acceso e identidad** | Solo los dos miembros acceden, de forma segura, y cada acción queda atribuida a quien la hizo | Ambos miembros entran y salen, gestionan sus sesiones, su contraseña y su perfil y configuran sus avisos; toda ruta de la API salvo el login, los enlaces de acción y los endpoints de salud rechaza las peticiones sin sesión (comprobado por un test) | US-01 … US-04, US-39, US-46 | Must (US-39, US-46: Should) | 2 |
 | **E2 · Tareas** | Que las tareas del hogar, puntuales o recurrentes, estén apuntadas y se regeneren solas | Se crean, editan, archivan, borran y resuelven tareas; las recurrentes generan su siguiente ocurrencia, las atrasadas se distinguen y "Hoy" y "Esta semana" reúnen tareas, citas y vencimientos | US-05 … US-10, US-40 | Must (US-09: Should) | 2 |
-| **E3 · Asignación y reparto** | Que siempre esté claro a quién le toca y que el reparto sea visible | Cada ocurrencia tiene responsable según su regla, las ausencias reasignan (y se deshacen al cancelarlas) y el balance refleja quién hace y quién planifica | US-11 … US-14, US-42 | Must (US-42: Should) | 2 |
+| **E3 · Asignación y reparto** | Que siempre esté claro a quién le toca y que el reparto sea visible | Cada ocurrencia tiene responsable según su regla (las de "cualquiera", ninguno), las ausencias reasignan (y se deshacen al cancelarlas) y el balance refleja quién hace y quién planifica | US-11 … US-14, US-42 | Must (US-42: Should) | 2 |
 | **E4 · Citas y vencimientos** | Que ningún vencimiento ni cita se pase | Se gestionan vencimientos y citas con antelaciones, adjuntos y renovación anual; los vencimientos atrasados se recuerdan cada día y las citas pasadas se cierran solas | US-15 … US-18, US-36, US-37, US-41 | Must (US-18, US-36, US-37: Should) | 2 (adjuntos en 3) |
-| **E5 · Motor temporal y avisos** | Que el sistema avise a los dos, a tiempo y sin ser molesto, y que se pueda actuar desde el aviso | Los avisos se entregan al servidor de correo en ≤ 2 min (p95) desde su momento previsto, también tras una caída y sin duplicados; respetan silencio y agrupación, y se pueden posponer y resolver desde el correo | US-19 … US-25 | Must (US-25: Should) | 2 |
+| **E5 · Motor temporal y avisos** | Que el sistema avise a los dos, a tiempo y sin ser molesto, y que se pueda actuar desde el aviso | Los avisos se entregan al servidor de correo en ≤ 2 min (p95) desde su momento previsto, sin duplicados, y tras una caída los pendientes salen al volver; respetan silencio y agrupación, y se pueden posponer y resolver desde el correo | US-19 … US-25 | Must (US-25: Should) | 2 |
 | **E6 · Gastos** | Llevar las cuentas compartidas sin otra app | Se registran, corrigen y borran gastos (también recurrentes) con su reparto, se ve el saldo y se liquida | US-26 … US-30, US-38, US-43, US-44 | Should (US-30, US-38: Could) | 3 |
-| **E7 · Compra** | Una lista compartida que, al cerrar la compra, se convierte en gasto | Ambos gestionan la lista por secciones, la marcan en la tienda y al cerrarla se registra el gasto | US-31 … US-33, US-38 | Could | 3 |
+| **E7 · Compra** | Una lista compartida que, al cerrar la compra, se convierte en gasto | Ambos gestionan la lista por secciones, la marcan en la tienda y al cerrarla con importe se registra el gasto | US-31 … US-33, US-38 | Could | 3 |
 | **E8 · Listas de interés** | Guardar en común lo que queremos hacer juntos | Se crean y mantienen listas temáticas y sus elementos, que se marcan como hechos y se valoran | US-34, US-35, US-45 | Could | 3 |
 | **E9 · Operación** | Saber que el sistema funciona y si cumple sus objetivos | El operador recibe una alerta si el motor temporal se para y puede calcular las métricas de éxito del PRD | US-47, US-48 | Must (US-48: Should) | 2 (US-48 en 3) |
 
@@ -351,9 +351,9 @@ Escenario: Editar la recurrencia
   Y el historial no cambia
 
 Escenario: Archivar
-  Dada una tarea con una ocurrencia pendiente
+  Dada una tarea con una ocurrencia pendiente o atrasada
   Cuando la archivo
-  Entonces su ocurrencia pendiente se cancela y no se generan más
+  Entonces esa ocurrencia se cancela, junto con sus avisos pendientes, y no se generan más
   Y desaparece de "Hoy" pero sigue en el historial
 
 Escenario: Borrar una tarea sin historial
@@ -619,7 +619,7 @@ Escenario: Antelación ya vencida al crear
 
 ### US-17 · Resolver un vencimiento y renovación anual
 **Como** miembro **quiero** marcar un vencimiento como resuelto, que los anuales se renueven solos y que las citas pasadas se cierren solas **para** no tener que gestionar a mano lo que ya ha pasado.
-`Must · 2 pts · RF-4.3, RF-4.4`
+`Must · 2 pts · RF-4.2, RF-4.3, RF-4.4`
 
 ```gherkin
 Escenario: Resolver
@@ -638,6 +638,12 @@ Escenario: Una cita pasada se cierra sola
   Cuando pasan las 17:00
   Entonces pasa a "Pasadas" sin que nadie haga nada
   Y no genera recordatorios de atraso
+
+Escenario: Apuntar algo cuya fecha ya pasó
+  Dado que hoy es 10/10
+  Cuando creo el vencimiento "Renovar DNI" con fecha 08/10
+  Entonces aparece como atrasado y entra en el recordatorio diario
+  Y no se envía ningún aviso inmediato por sus antelaciones
 ```
 
 ### US-18 · Aviso diario de vencimientos atrasados
