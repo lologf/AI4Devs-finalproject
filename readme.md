@@ -144,7 +144,7 @@ flowchart LR
     end
     subgraph Aplicación
       UC[Casos de uso<br/>+ Unit of Work]
-      BUS((Event bus<br/>en memoria))
+      BUS((Bus de eventos<br/>en memoria))
     end
     subgraph Dominios
       T[tasks]
@@ -230,7 +230,7 @@ Decisiones de arquitectura (ADR):
 |---|---|---|
 | **API HTTP** | Python 3.12, FastAPI, Pydantic v2, Uvicorn; `argon2-cffi`, `secrets` y middleware propio de CSRF y cabeceras | Adaptador de entrada. Autenticación, CSRF, validación, traducción HTTP ↔ casos de uso. Genera el contrato OpenAPI |
 | **Casos de uso + Unit of Work** | Python | Orquestan comandos sobre uno o varios dominios en **una transacción**; publican eventos en el bus |
-| **Event bus** | Python (en memoria, ~50 líneas) | Despacho síncrono de eventos a los handlers suscritos; persiste cada evento en `domain_events` (auditoría) |
+| **Bus de eventos** | Python (en memoria, ~50 líneas) | Despacho síncrono de eventos a los handlers suscritos; persiste cada evento en `domain_events` (auditoría) |
 | **Dominios** | Python puro; `python-dateutil` (`rrule`) para las recurrencias | Entidades, reglas y eventos de cada área. Cada uno con su `SPEC.md` (eventos emitidos/consumidos) |
 | **Motor temporal** | CLI `tandem tick` + cron del host | Publica `ClockTicked(now, since)` y entrega el outbox. Idempotente, reanudable y con exclusión mutua (`pg_try_advisory_lock`). `GET /api/health/scheduler`, vigilado por un monitor externo, alerta si deja de ejecutarse (US-47) |
 | **Notificador SMTP** | `smtplib`/`aiosmtplib`, plantillas Jinja2; Mailpit en desarrollo | Adaptador de salida: renderiza y envía correos agrupados. Proveedor: el SMTP que ofrezca el VPS contratado, configurado por variables de entorno |
@@ -257,7 +257,7 @@ tandem/
 │   │   │   │   ├── commands.py     # Casos de uso del dominio
 │   │   │   │   ├── handlers.py     # Reacciones a eventos (ClockTicked…)
 │   │   │   │   └── ports.py        # TaskRepository (interfaz)
-│   │   │   ├── assignment/ deadlines/ expenses/ shopping/ lists/ notifications/
+│   │   │   └── assignment/ deadlines/ expenses/ shopping/ lists/ notifications/
 │   │   ├── application/            # Casos de uso que orquestan varios dominios en una transacción
 │   │   ├── adapters/
 │   │   │   ├── http/               # Routers FastAPI, auth, CSRF, cabeceras, problem+json
@@ -371,7 +371,7 @@ RETURNING member_id, action, target_id;
 
 ### **3.1. Diagrama del modelo de datos:**
 
-> Todas las relaciones dibujadas son FK reales, también entre dominios (ADR-11). Las referencias polimórficas sin FK (`notifications.target_id`, `action_tokens.target_id`, `balance_entries.subject_id`) no se dibujan (ver *Convenciones* en §3.2). Por legibilidad no se dibujan todas las FK de autoría hacia `MEMBERS` (p. ej. `created_by`, `assigned_by`, `checked_by`, `done_by`, `completed_by`); están en las tablas de §3.2.
+> Todas las relaciones dibujadas son FK reales, también entre dominios (ADR-11). Las referencias polimórficas sin FK (`notifications.target_id`, `action_tokens.target_id`, `balance_entries.subject_id`) no se dibujan (ver *Convenciones* en §3.2). Por legibilidad no se dibujan todas las FK de autoría hacia `MEMBERS` (p. ej. `created_by`, `assigned_by`, `checked_by`, `done_by`, `resolved_by`); están en las tablas de §3.2.
 
 ```mermaid
 erDiagram
@@ -479,7 +479,7 @@ erDiagram
         uuid id PK
         uuid member_id FK
         balance_kind kind "completed|planned"
-        uuid source_event_id UK "evento proyectado"
+        uuid source_event_id FK, UK "evento proyectado (FK diferida)"
         uuid subject_id "tarea, vencimiento u ocurrencia"
         timestamptz occurred_at
     }
@@ -685,6 +685,7 @@ erDiagram
     EXPENSE_CATEGORIES ||--o{ RECURRING_EXPENSES : "clasifica"
     MEMBERS ||--o{ EXPENSES : "paga"
     MEMBERS ||--o{ RECURRING_EXPENSES : "paga"
+    RECURRING_EXPENSES |o--o{ EXPENSES : "origina"
     MEMBERS ||--o{ SETTLEMENTS : "liquida"
     SHOPPING_CATEGORIES ||--o{ SHOPPING_ITEMS : "agrupa"
     SHOPPING_TRIPS |o--o{ SHOPPING_ITEMS : "incluye"
@@ -704,7 +705,7 @@ erDiagram
     TASKS ||--|| ASSIGNMENT_RULES : "regla de asignación"
     TASK_OCCURRENCES ||--o| OCCURRENCE_ASSIGNMENTS : "asignación"
     TASKS ||--o{ OCCURRENCE_ASSIGNMENTS : "agrupa"
-    RECURRING_EXPENSES |o--o{ EXPENSES : "origina"
+    DOMAIN_EVENTS ||--o| BALANCE_ENTRIES : "se proyecta en"
     SHOPPING_TRIPS |o--o| EXPENSES : "origina"
 ```
 
@@ -809,7 +810,7 @@ Definición de una tarea (puntual o recurrente).
 | `recurrence` | enum `task_recurrence` | NOT NULL | `once` · `calendar` · `after_completion` |
 | `rrule` | varchar(255) | NULL; CHECK `(recurrence = 'calendar') = (rrule IS NOT NULL)` y `rrule <> ''` | Subconjunto de RFC 5545 (`FREQ=WEEKLY;BYDAY=MO,TH`) |
 | `interval_days` | smallint | NULL; CHECK `(recurrence = 'after_completion') = (interval_days IS NOT NULL)` y `interval_days > 0` | |
-| `first_due_at` | timestamptz | NOT NULL | Primera ocurrencia (o única si `once`). Fecha y hora obligatorias; su hora del día se conserva en las siguientes ocurrencias |
+| `first_due_at` | timestamptz | NOT NULL | Primera ocurrencia (o única si `once`). Fecha y hora obligatorias; su hora del día se conserva en las siguientes ocurrencias. En `calendar` actúa como inicio de la `rrule` (DTSTART): la primera ocurrencia es la primera fecha de la `rrule` igual o posterior |
 | `archived_at` | timestamptz | NULL | Una tarea archivada deja de generar ocurrencias |
 | `created_by` | uuid | FK → `members.id`, NOT NULL | |
 | `created_at`, `updated_at` | timestamptz | NOT NULL | |
@@ -883,7 +884,7 @@ Proyección del **balance** (RF-3.4): `assignment` reacciona a `OccurrenceComple
 | `id` | uuid | PK | |
 | `member_id` | uuid | FK → `members.id`, NOT NULL | Quien completó o creó |
 | `kind` | enum `balance_kind` | NOT NULL | `completed` · `planned` |
-| `source_event_id` | uuid | NOT NULL, UNIQUE | Evento proyectado: reprocesar un evento no suma dos veces |
+| `source_event_id` | uuid | NOT NULL, UNIQUE; FK → `domain_events.id`, DEFERRABLE INITIALLY DEFERRED, ON DELETE NO ACTION | Evento proyectado: reprocesar un evento no suma dos veces |
 | `subject_id` | uuid | NOT NULL (ref. lógica) | Tarea, vencimiento u ocurrencia: al borrar una tarea o un vencimiento (`TaskDeleted`, `DeadlineDeleted`) se retira su fila `planned` |
 | `occurred_at` | timestamptz | NOT NULL | Para filtrar por semana, mes o total |
 
@@ -960,8 +961,8 @@ Máximo 10 adjuntos por cita o vencimiento (validado en el caso de uso). Los adj
 | `deleted_at` | timestamptz | NULL | Borrado lógico (mantiene el historial del saldo) |
 
 Idempotencia de los gastos generados:
-- Recurrentes, uno por plantilla y mes: `UNIQUE (recurring_expense_id, date_trunc('month', spent_on::timestamp)) WHERE recurring_expense_id IS NOT NULL`. Se aplica aunque se cambie el día de cobro de la plantilla.
-- Compra, uno por compra: `UNIQUE (shopping_trip_id) WHERE shopping_trip_id IS NOT NULL`.
+- Recurrentes, uno por plantilla y mes: índice único parcial `UNIQUE (recurring_expense_id, date_trunc('month', spent_on::timestamp)) WHERE recurring_expense_id IS NOT NULL`. Se aplica aunque se cambie el día de cobro de la plantilla.
+- Compra, uno por compra: índice único parcial `UNIQUE (shopping_trip_id) WHERE shopping_trip_id IS NOT NULL`.
 
 **Saldo** (RF-5.3), calculado. Para cada gasto, la parte del otro es `floor(amount_cents × (100 − payer_share_pct) / 100)`, redondeada a la baja al céntimo; el céntimo sobrante lo asume quien paga (10,01 € a medias: el otro debe 5,00 €). Entonces:
 - saldo a favor de A = Σ (parte de B en los gastos que pagó A) − Σ (parte de A en los gastos que pagó B) − Σ (liquidaciones de B a A) + Σ (liquidaciones de A a B).
@@ -1539,7 +1540,7 @@ components:
         first_due_at:
           type: string
           format: date-time
-          description: Fecha y hora de la primera (o única) ocurrencia; su hora del día se conserva en las siguientes. Si su día ya terminó, la ocurrencia nace `overdue`.
+          description: Fecha y hora de la primera (o única) ocurrencia; su hora del día se conserva en las siguientes. En `calendar` es el inicio de la `rrule` (DTSTART) y la primera ocurrencia es la primera fecha de la `rrule` igual o posterior. Si su día ya terminó, la ocurrencia nace `overdue`.
         assignment:
           $ref: '#/components/schemas/AssignmentRuleInput'
 
@@ -1709,8 +1710,8 @@ Escenario: Solo una ocurrencia abierta
   Y la del lunes 05/10 no se genera ni cuenta como omitida
   Y cuando se resuelve el martes 06/10, la siguiente es el jueves 08/10
 
-Escenario: Cambio de horario de verano
-  Dado una tarea diaria a las 09:00
+Escenario: Cambio de hora de octubre
+  Dada una tarea diaria a las 09:00
   Cuando cambia la hora el último domingo de octubre
   Entonces la ocurrencia de ese día sigue siendo a las 09:00 hora local
 ```
@@ -1743,7 +1744,7 @@ Escenario: Vencimiento resuelto antes del aviso
   Cuando llega el 13/11
   Entonces no se envía el recordatorio de 7 días
 
-Escenario: Antelación ya vencida al crear o mover
+Escenario: Antelación ya vencida al crear
   Dado que son las 15:00
   Cuando creo la cita "Médico" para hoy a las 16:30, con recordatorios de 1 día y 2 horas
   Entonces ambos reciben enseguida un único aviso "Hoy a las 16:30: Médico"
@@ -1770,9 +1771,9 @@ Esquema del escenario: Otras acciones desde el correo
   Entonces <resultado>
 
   Ejemplos:
-    | botón        | resultado                                                   |
-    | Omitir       | la ocurrencia queda omitida y no cuenta en el balance        |
-    | Posponer     | elijo "Mañana" y el aviso vuelve mañana a mi hora de digest  |
+    | botón        | resultado                                                      |
+    | Omitir       | la ocurrencia queda omitida y no cuenta en el balance          |
+    | Posponer     | elijo "Mañana" y el aviso vuelve mañana a mi hora de digest    |
     | Me lo quedo  | la ocurrencia pasa a ser mía y el otro miembro recibe un aviso |
     | Resuelto     | el vencimiento queda resuelto y no se envían más recordatorios |
 
@@ -1823,7 +1824,7 @@ Esquema del escenario: Enlace no válido
 | **Bloquea a** | TCK-03 y, a través de él, a todos los tickets de backend |
 
 **Contexto**
-Primer esquema de la base de datos. Debe garantizar **en la propia BD** las reglas de negocio críticas (máximo dos miembros, ocurrencias no duplicadas, ausencias no solapadas), para que un error en la aplicación o un tick reprocesado no deje datos incoherentes. Referencia: [§3.2.1–3.2.3](#3-modelo-de-datos).
+Primer esquema de la base de datos. Debe garantizar **en la propia BD** las reglas de negocio críticas (máximo dos miembros, ocurrencias no duplicadas, ausencias no solapadas), para que un error en la aplicación o un tick reprocesado no deje datos incoherentes. Referencia: [§3.2.1–3.2.3](#321-núcleo-compartido-y-autenticación).
 
 **Alcance**
 - Migración Alembic `0001_core_tasks_assignment` con `upgrade` y `downgrade`.
@@ -1836,19 +1837,18 @@ Primer esquema de la base de datos. Debe garantizar **en la propia BD** las regl
 **Tareas técnicas**
 - [ ] Crear enums y tablas con los tipos, `NOT NULL` y valores por defecto del modelo de datos.
 - [ ] Restricciones:
-  - `members`: `UNIQUE (slot)`, `CHECK (slot IN (1, 2))`, `UNIQUE (email)`.
+  - `members`: `UNIQUE (slot)`, `CHECK (slot IN (1, 2))`, `UNIQUE (email)`, `CHECK (quiet_start <> quiet_end)`.
   - `household_settings`: `CHECK (id = 1)`, `CHECK (default_split_slot1_pct BETWEEN 0 AND 100)`.
-  - `members`: además, `CHECK (quiet_start <> quiet_end)`.
   - `tasks`: `CHECK ((recurrence = 'calendar') = (rrule IS NOT NULL))`, `CHECK (rrule <> '')`, `CHECK ((recurrence = 'after_completion') = (interval_days IS NOT NULL))`, `CHECK (interval_days > 0)`.
-  - `task_occurrences`: `UNIQUE (task_id, due_at)`, `UNIQUE (task_id) WHERE status IN ('pending','overdue')` (una sola abierta por tarea), `CHECK ((status IN ('done','skipped')) = (resolved_at IS NOT NULL))`, `CHECK ((status IN ('done','skipped')) = (resolved_by IS NOT NULL))`.
+  - `task_occurrences`: `UNIQUE (task_id, due_at)`, `CHECK ((status IN ('done','skipped')) = (resolved_at IS NOT NULL))`, `CHECK ((status IN ('done','skipped')) = (resolved_by IS NOT NULL))`.
   - `assignment_rules`: `CHECK ((mode = 'fixed') = (fixed_member_id IS NOT NULL))`, `CHECK ((mode = 'alternate') = (next_member_id IS NOT NULL))`.
   - `absences`: `CHECK (ends_on >= starts_on)` y `EXCLUDE USING gist (member_id WITH =, daterange(starts_on, ends_on, '[]') WITH &&)`.
   - `sessions`: `UNIQUE (token_hash)`, FK `member_id` `ON DELETE CASCADE`.
   - `task_occurrences`: FK `task_id` `ON DELETE CASCADE` (mismo dominio).
   - `balance_entries`: `UNIQUE (source_event_id)`.
   - Resto de FK hacia `members.id` según §3.2.1–3.2.3.
-- [ ] Índices: `task_occurrences (status, due_at)`, `sessions (member_id) WHERE revoked_at IS NULL`, `rate_limit_events (bucket, subject, occurred_at)`, `rate_limit_events (bucket, ip, occurred_at)`, `domain_events (type, occurred_at)`, `domain_events (actor_id, occurred_at)`, `balance_entries (member_id, kind, occurred_at)`, `balance_entries (subject_id) WHERE kind = 'planned'`.
-- [ ] FK entre dominios (`assignment_rules.task_id`, `occurrence_assignments.occurrence_id` y `.task_id`) como `DEFERRABLE INITIALLY DEFERRED` y `ON DELETE NO ACTION`, sin cascada (ADR-11).
+- [ ] Índices: índice único parcial `task_occurrences (task_id) WHERE status IN ('pending','overdue')` (una sola abierta por tarea), `task_occurrences (status, due_at)`, `sessions (member_id) WHERE revoked_at IS NULL`, `rate_limit_events (bucket, subject, occurred_at)`, `rate_limit_events (bucket, ip, occurred_at)`, `domain_events (type, occurred_at)`, `domain_events (actor_id, occurred_at)`, `balance_entries (member_id, kind, occurred_at)`, `balance_entries (subject_id) WHERE kind = 'planned'`.
+- [ ] FK entre dominios (`assignment_rules.task_id`, `occurrence_assignments.occurrence_id` y `.task_id`, `balance_entries.source_event_id`) como `DEFERRABLE INITIALLY DEFERRED` y `ON DELETE NO ACTION`, sin cascada (ADR-11).
 - [ ] `downgrade` completo, con `DROP TYPE` explícitos de los enums (Alembic no los borra al borrar las tablas).
 - [ ] Probar `alembic upgrade head` → `downgrade base` → `upgrade head` en limpio.
 
@@ -1860,12 +1860,12 @@ Escenario: Máximo dos miembros
   Entonces la BD rechaza la inserción
 
 Escenario: Idempotencia de ocurrencias
-  Dado una ocurrencia de la tarea T para el 2026-10-05T19:00Z
+  Dada una ocurrencia hecha de la tarea T para el 2026-10-05T19:00Z
   Cuando se inserta otra para la misma tarea y fecha
   Entonces la BD lanza una violación de unicidad
 
 Escenario: Una sola ocurrencia abierta por tarea
-  Dado una ocurrencia pendiente de la tarea T
+  Dada una ocurrencia pendiente de la tarea T
   Cuando se inserta otra pendiente de T para otra fecha
   Entonces la BD la rechaza
 
@@ -1874,7 +1874,7 @@ Escenario: Coherencia de la recurrencia
   Entonces la BD rechaza la inserción
 
 Escenario: Ausencias solapadas
-  Dado una ausencia de Álex del 10/10 al 12/10
+  Dada una ausencia de Álex del 10/10 al 12/10
   Cuando se inserta otra del 12/10 al 15/10 para Álex
   Entonces la BD la rechaza
   Y la misma ausencia para Lucía se acepta
@@ -1884,7 +1884,7 @@ Escenario: La regla se puede guardar antes que la tarea
   Entonces el commit se acepta
 
 Escenario: Sin huérfanos entre dominios
-  Dado la tarea T con su regla y la asignación de su ocurrencia
+  Dada la tarea T con su regla y la asignación de su ocurrencia
   Cuando se borra T sin borrar la regla ni la asignación en la misma transacción
   Entonces el commit falla y T sigue existiendo
 
@@ -2011,12 +2011,12 @@ Escenario: Vencimiento de día completo creado el mismo día
   Entonces cada miembro recibe un único aviso inmediato
 
 Escenario: Cambio de fecha
-  Dado una cita con recordatorios pendientes
+  Dada una cita con recordatorios pendientes
   Cuando se cambia su fecha
   Entonces los pendientes se cancelan y se programan los de la nueva fecha
 
 Escenario: Edición sin cambio de fecha
-  Dado una cita con un recordatorio pendiente
+  Dada una cita con un recordatorio pendiente
   Cuando se cambia solo su título
   Entonces el recordatorio anterior se cancela y se vuelve a programar con la misma clave
 
@@ -2026,7 +2026,7 @@ Escenario: Editar sin cambiar la fecha no genera aviso inmediato
   Entonces no se crea ningún aviso inmediato
 
 Escenario: Una cita pasada no se atrasa
-  Dado una cita a las 17:00
+  Dada una cita a las 17:00
   Cuando se ejecuta el tick de las 17:01
   Entonces la cita queda "past" y no se crea ningún recordatorio de atraso
 ```
@@ -2061,7 +2061,7 @@ Escenario: Una cita pasada no se atrasa
 **Contexto**
 Los avisos por correo incluyen botones ("Hecho", "Omitir", "Posponer", "Me lo quedo", "Resuelto"), y el correo de cambio de email de avisos incluye "Confirmar este email". Cada uno enlaza a `https://<host>/a#<token>`. Esta página es la única de la web que **no requiere sesión**: el token de un solo uso es la credencial (RNF-SEC-6). Debe cumplir dos cosas:
 1. Que abrir el enlace **no ejecute nada**, porque los escáneres de enlaces de los clientes de correo lo abren.
-2. Que el token no se filtre (va en el fragmento, que el navegador no envía al servidor, ni en logs ni en `Referer`).
+2. Que el token no llegue al servidor, a los logs ni al `Referer`: va en el fragmento, que el navegador no envía.
 
 **Alcance**
 - Ruta pública `/a` en Vue Router, fuera del guard de autenticación.
@@ -2074,7 +2074,7 @@ Los avisos por correo incluyen botones ("Hecho", "Omitir", "Posponer", "Me lo qu
 - [ ] `<meta name="referrer" content="no-referrer">` en esta ruta; no cargar recursos de terceros.
 - [ ] `inspect` → tarjeta de confirmación con: acción ("Marcar como hecha"), objeto ("Poner lavadora · hoy 19:00"), en nombre de quién ("Lucía") y responsable actual.
 - [ ] Para `snooze`: selector 1 h / Mañana / 3 días.
-- [ ] Para `confirm_email`: tarjeta "¿Usar lucia@nuevo.com como email de avisos de Lucía?".
+- [ ] Para `confirm_email`: tarjeta "¿Usar lucia@nuevo.example como email de avisos de Lucía?".
 - [ ] Botones "Confirmar" (primario) y "Abrir Tandem" (enlace a la web con login).
 - [ ] `redeem` solo al pulsar "Confirmar"; deshabilitar el botón mientras se procesa (evita doble envío).
 - [ ] Mensajes por estado:
@@ -2115,9 +2115,9 @@ Escenario: Enlace sin token o con token malformado
   Entonces veo "Este enlace ya no es válido" sin llamar a la API
 
 Escenario: Confirmar el nuevo email de avisos
-  Dado un token "confirm_email" para lucia@nuevo.com
+  Dado un token "confirm_email" para lucia@nuevo.example
   Cuando abro el enlace y pulso "Confirmar"
-  Entonces veo "Los avisos de Lucía irán a lucia@nuevo.com"
+  Entonces veo "Los avisos de Lucía irán a lucia@nuevo.example"
 ```
 
 **Tests**

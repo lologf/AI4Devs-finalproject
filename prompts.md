@@ -23,16 +23,16 @@ Puedes añadir adicionalmente la conversación completa como link o archivo adju
 Decisiones que tomé yo o que partieron de una pregunta mía:
 
 - **Nombre del producto**: la IA propuso opciones (HestiaOS, Hearth, Tandem, Roost…); elegí **Tandem**.
-- **Alcance**: la IA recomendaba dejar `shopping` y `lists` fuera del MVP; decidí incluir **todos los dominios**. En la revisión final acepté la recomendación de expresarlo como "MVP comprometido: Must y Should; Could si el plan lo permite".
+- **Alcance**: la IA recomendaba dejar `shopping` y `lists` fuera del MVP; decidí incluir **todos los dominios**. En la tercera revisión acepté la recomendación de expresarlo como "MVP comprometido: Must y Should; Could si el plan lo permite".
 - **Digest opcional por miembro** (no estaba en la primera versión). Consecuencia detectada por la IA: los vencimientos atrasados necesitan un aviso diario independiente si el digest está desactivado.
-- **Política de contraseñas**: primero pedí reglas de composición (mayúscula, minúscula y carácter especial). En la revisión final la IA señaló que van en contra de NIST SP 800-63B y propuso mantenerlas documentándolo como decisión mía; en su lugar decidí **seguir NIST**: 15 caracteres como mínimo (la contraseña es el único factor), sin reglas de composición y con lista de contraseñas comunes o filtradas.
+- **Política de contraseñas**: primero pedí reglas de composición (mayúscula, minúscula y carácter especial). En la tercera revisión la IA señaló que van en contra de NIST SP 800-63B-4 y propuso mantenerlas documentándolo como decisión mía; en su lugar decidí **seguir NIST**: 15 caracteres como mínimo (la contraseña es el único factor), sin reglas de composición y con lista de contraseñas comunes o filtradas.
 - **Categorías**: pregunté si debían ser tablas o enums. La IA propuso quitarlas en tareas y elementos de listas y usar tablas editables en gastos y compra (ADR-10); lo acepté.
 - **Adjuntos en citas** (reservas, billetes, entradas): funcionalidad que añadí en la revisión, con su modelo de datos, requisitos de seguridad (RNF-SEC-10) e historias (US-36, US-37).
 - **Descartado**: aviso de "desequilibrio" del balance de tareas.
 - **Una sola fuente por contenido**: al revisar detecté que el README repetía lo que había en `docs/`. Prompt: *"Aplicamos [la opción] 1 con cuidado de que no se pierda información ni se repita. Mucho cuidado y rigor"*. Resultado: el README contiene lo que pide la plantilla y `docs/` solo lo complementario, con enlaces en lugar de copias. Antes de borrar nada, la IA comprobó línea a línea que el contenido eliminado estaba en el README. Después elegí, entre las opciones que me dio, una excepción para las historias: `docs/USER_STORIES.md` es la única fuente de todas ellas y `scripts/build_readme.py` copia las 3 principales (⭐) al README §5; el CI lo verificará con `--check` (TCK-01).
 - **Validación de supuestos**: zona horaria, horarios por defecto, caducidades de sesión y token, backups, rotación tras ausencia, duplicados en la compra, fechas pasadas.
 - **FK entre dominios**: pregunté si eran incompatibles con la arquitectura hexagonal, porque quería que la integridad la garantizara el motor de BD. La IA explicó que la hexagonal separa el código y no el esquema, y propuso FK `DEFERRABLE INITIALLY DEFERRED` sin cascada; lo verificó en Postgres 16 antes de documentarlo (ADR-11). También se partió `expenses.source_ref` en dos columnas con FK.
-- **Revisiones**: pedí cuatro rondas de revisión completa (secciones 5 y 6) y en cada una elegí qué aplicar. En la última, centrada en los cambios recientes, un revisor implementó el modelo completo documentado en un Postgres 16 real (27 tablas, 40 escenarios) sin errores; solo quedaron correcciones menores, como que editar una cita sin cambiar la fecha no debe generar un aviso inmediato.
+- **Revisiones**: pedí cinco rondas de revisión completa y en cada una elegí qué aplicar. Las tres primeras se describen en las secciones 5 y 6. En la cuarta, centrada en los cambios recientes, un revisor implementó el modelo completo documentado en un Postgres 16 real (27 tablas, 40 escenarios) sin errores; solo quedaron correcciones menores, como que editar una cita sin cambiar la fecha no debe generar un aviso inmediato. La quinta fue un último repaso antes de entregar, con tres revisores independientes (coherencia, entregable frente a la plantilla y técnica): corrigió detalles de trazabilidad (un ticket para la tabla `action_tokens`, dependencias de TCK-05 y TCK-11c), un criterio de TCK-02 que no probaba lo que decía y un índice único parcial escrito como restricción, jerga técnica que quedaba en algunos criterios y la redacción; y, con mi visto bueno, añadió la FK de `balance_entries.source_event_id` (ADR-11) y definió la primera ocurrencia de las tareas de calendario.
 
 Salvo lo indicado aquí, los cambios que describen las secciones siguientes son propuestas de la IA que revisé y acepté.
 
@@ -99,14 +99,12 @@ La IA planteó las alternativas con su recomendación y yo elegí:
 
 | Pregunta | Opciones planteadas | Elección |
 |---|---|---|
-| Scheduler | Cron + comando `tick` / worker Python / APScheduler dentro de FastAPI | Cron + `tick` idempotente |
+| Motor temporal | Cron + comando `tick` / worker Python / APScheduler dentro de FastAPI | Cron + `tick` idempotente |
 | Consistencia del bus | Bus síncrono + outbox / bus asíncrono | Síncrono + `notifications` como outbox |
 | Frontend | Vue 3 + Vite + TS / vanilla o Alpine / React | Vue 3 + Vite + TS |
 | Despliegue | Docker Compose + Caddy / systemd nativo / PaaS | Docker Compose + Caddy |
 
-*Ajuste de la IA que acepté*: que el scheduler no conozca a los dominios, sino que publique `ClockTicked(now, since)` y cada dominio reaccione. En aquel momento, la ventana `(since, now]` hacía el tick reanudable tras una caída. En la segunda revisión se cambió: los recordatorios se programan por adelantado y el tick es reanudable porque comprueba estados; `since` solo delimita el digest.
-
-**Prompt 3:** —
+*Ajuste de la IA que acepté*: que el motor temporal no conozca a los dominios, sino que publique `ClockTicked(now, since)` y cada dominio reaccione. En aquel momento, la ventana `(since, now]` hacía el tick reanudable tras una caída. En la segunda revisión se cambió: los recordatorios se programan por adelantado y el tick es reanudable porque comprueba estados; `since` solo delimita el digest.
 
 ### **2.2. Descripción de componentes principales:**
 
@@ -134,7 +132,7 @@ La IA planteó las alternativas con su recomendación y yo elegí:
 
 > Está bien asumida la contraseña de 12 caracteres, y debería cumplir mínimos de seguridad (mayúscula, minúscula, caracteres especiales).
 
-*Cambio posterior*: en la revisión final decidí seguir NIST SP 800-63B-4 (ver "Decisiones propias"): RNF-SEC-1, US-01 y US-39 se reescribieron.
+*Cambio posterior*: en la tercera revisión decidí seguir NIST SP 800-63B-4 (ver "Decisiones propias"): RNF-SEC-1, US-01 y US-39 se reescribieron.
 
 ### **2.6. Tests**
 
@@ -232,7 +230,7 @@ La IA lanzó dos subagentes sin el contexto de la conversación, uno de coherenc
 - **Tickets**: se dividieron los grandes, se añadieron plantillas de correo, datos de demo, métricas, despliegue mínimo y restauración de backups, con dependencias explícitas. Pasan de 20 tickets y 53 h a 31 tickets y 95 h (~114 h con un colchón del 20 %).
 - **Verificación automática**: numeración, épicas, prioridades, escenarios, cobertura de historias y requisitos, dependencias, diagramas, OpenAPI y enlaces.
 
-**Prompt 3:** revisión final desde tres ángulos
+**Prompt 3:** tercera revisión, desde tres ángulos
 
 > ¿Aplicamos una revisión final a user stories, tickets, PRD, data model, doc OpenAPI y README?
 

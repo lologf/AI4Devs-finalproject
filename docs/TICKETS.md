@@ -12,20 +12,20 @@
 |---|---|---|---|---|---|---|
 | TCK-01 | INFRA | — | Esqueleto del repositorio, Docker Compose de desarrollo (api, db, mailpit) y CI: lint, tests con umbral de cobertura (RNF-MNT-3), `import-linter` (RNF-MNT-1) y `build_readme.py --check` | — | — | 2 h |
 | **TCK-02** | **BD** | **E1, E2, E3** | **Migración inicial: núcleo, `tasks` y `assignment`** | US-01, US-06, US-11, US-12, US-14 | TCK-01 | 4 h |
-| TCK-03 | BE | — | Núcleo compartido: `EventBus` síncrono, `UnitOfWork`, `Clock`, registro en `domain_events` | — | TCK-02 | 2 h |
+| TCK-03 | BE | — | Núcleo compartido: `EventBus` síncrono, `UnitOfWork` (RNF-REL-2), `Clock` (RNF-MNT-2), registro en `domain_events` | — | TCK-02 | 2 h |
 | TCK-04 | BE | E1 | Autenticación: CLI `create-user` y `set-password`, política de contraseñas NIST con lista de contraseñas comunes, login/logout, sesiones activas, cambio de contraseña, CSRF, límite de intentos en BD, cabeceras de seguridad (RNF-SEC-5) y test de rutas sin sesión (salvo login, enlaces de acción y salud) | US-01 … US-03, US-39 | TCK-03 | 4 h |
 | TCK-07 | BD+BE | E4 | Dominio `deadlines`: vencimientos (también de día completo) y citas, alta, edición, borrado y resolución, antelaciones, renovación anual | US-15, US-17, US-41 | TCK-03 | 4 h |
 | TCK-09a | BD+BE | E5 | Entrega de avisos: tablas `notifications` (con `planned_for`, `target_type/target_id`) y `deliveries` (con `sent_at`), puerto `Notifier` y adaptador SMTP, silencio [inicio, fin) con adelanto, agrupación, posponer (aviso nuevo con `snoozed_from_id`), reintentos, `failed` y cancelación por eventos | US-22, US-23, US-25 | TCK-03 | 5 h |
 | **TCK-08** | **BE** | **E4, E5** | **Motor temporal `tandem tick` y recordatorios de vencimientos** | US-16 … US-19 | TCK-03, TCK-07, TCK-09a, TCK-23 | 5 h |
-| TCK-05 | BE | E2 | Dominio `tasks` + endpoints (`POST /tasks`, completar/omitir, editar/archivar/borrar, vistas "Hoy" y "Esta semana" con citas y vencimientos, atrasadas) | US-05 … US-10, US-40 | TCK-03, TCK-07, TCK-09a | 5 h |
+| TCK-05 | BE | E2 | Dominio `tasks` + endpoints (`POST /tasks`, completar/omitir, editar/archivar/borrar, vistas "Hoy" y "Esta semana" con citas y vencimientos, atrasadas) | US-05 … US-10, US-40 | TCK-03, TCK-04, TCK-07, TCK-09a | 5 h |
 | TCK-06 | BE | E3 | Dominio `assignment`: reglas y cambio de modo, rotación, ausencias (alta, cambios y cancelación), "me lo quedo" concurrente, proyección del balance | US-11 … US-14, US-42 | TCK-05 | 4 h |
-| TCK-12 | BE | E1, E5 | Tokens de acción: emisión, `inspect` y `redeem` (incluido `confirm_email`, que invalida los anteriores) | US-24, US-46 | TCK-05, TCK-06, TCK-07, TCK-09a | 3 h |
+| TCK-12 | BD+BE | E1, E5 | Tokens de acción: tabla `action_tokens` (migración), emisión, `inspect` y `redeem` (incluido `confirm_email`, que invalida los anteriores) | US-24, US-46 | TCK-05, TCK-06, TCK-07, TCK-09a | 3 h |
 | TCK-09b | BE | E1 … E5 | Digest, recordatorio diario de vencimientos atrasados, avisos de tareas, de asignaciones y reasignaciones y al responsable, perfil (nombre y cambio de email con confirmación) y reprogramación al cambiar las preferencias | US-04, US-05, US-11 … US-13, US-15, US-18, US-20, US-21, US-41, US-42, US-46 | TCK-05, TCK-06, TCK-08, TCK-12 | 4 h |
 | TCK-22 | BE | E1, E4, E5 | Plantillas de correo (HTML y texto por tipo de aviso, correo agrupado, digest, botones de acción, confirmación de email) y entregabilidad (SPF/DKIM) | US-16, US-20 … US-24, US-46 | TCK-09a, TCK-12 | 3 h |
-| TCK-10 | FE | E1 | Esqueleto Vue 3 + Vite + TS, cliente tipado desde OpenAPI, login y logout | US-02, US-03 | TCK-04 | 2 h |
+| TCK-10 | FE | E1 | Esqueleto Vue 3 + Vite + TS, cliente tipado desde OpenAPI (RNF-MNT-4), login y logout | US-02, US-03 | TCK-04 | 2 h |
 | TCK-11a | FE | E2, E5 | Vistas "Hoy" y "Esta semana", tareas y banner de avisos fallidos | US-05 … US-10, US-25, US-40 | TCK-10, TCK-05 | 4 h |
 | TCK-11b | FE | E3 | Vistas de asignación, ausencias y balance | US-11 … US-14, US-42 | TCK-10, TCK-06 | 3 h |
-| TCK-11c | FE | E1, E4 | Vistas de vencimientos y citas y perfil (preferencias, sesiones, contraseña, nombre y email) | US-03, US-04, US-15 … US-18, US-39, US-41, US-46 | TCK-10, TCK-07 | 4 h |
+| TCK-11c | FE | E1, E4 | Vistas de vencimientos y citas y perfil (preferencias, sesiones, contraseña, nombre y email) | US-03, US-04, US-15 … US-18, US-39, US-41, US-46 | TCK-10, TCK-07, TCK-09b | 4 h |
 | **TCK-13** | **FE** | **E5** | **Página de acción desde el correo (`/a#token`)** | US-24 | TCK-10, TCK-12 | 2 h |
 | TCK-23 | BE | — | `tandem seed-demo`: datos de demostración idempotentes (evidencias, vídeo, rendimiento) | — | TCK-05, TCK-07 | 1 h |
 | TCK-19 | QA | E2, E5 | E2E con Playwright del flujo principal: crear tarea → aviso en Mailpit → acción desde el correo → reflejo en la web | US-06, US-20, US-24 | TCK-08, TCK-09b, TCK-11a, TCK-13, TCK-22 | 3 h |

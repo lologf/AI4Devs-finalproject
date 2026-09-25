@@ -38,7 +38,7 @@ Producto personal, sin ánimo comercial: este canvas sirve para fijar el foco, n
 | **Operador** | Quien instala y mantiene el sistema (en la práctica, uno de los miembros): alta de miembros, restablecimiento de contraseñas, alertas y métricas. |
 
 Supuestos de partida:
-- Los usuarios se dan de alta **por CLI** en la instalación (`tandem create-user`). No hay registro, onboarding ni recuperación de contraseña: el cambio de contraseña se hace por CLI o desde el perfil estando logueado.
+- Los usuarios se dan de alta **por CLI** en la instalación (`tandem create-user`). No hay registro, onboarding ni recuperación de contraseña: el cambio de contraseña se hace por CLI o desde el perfil con la sesión iniciada.
 - No hay importación de histórico.
 - Una única zona horaria para el hogar: `Europe/Madrid`. Las fechas se guardan en UTC.
 - Una única moneda: EUR.
@@ -74,7 +74,7 @@ Se calculan con `tandem metrics` (RF-10.1, US-48) a partir de `domain_events`, `
 
 ### 5.1. Dentro del MVP
 
-**MVP comprometido**: todo lo Must y Should. Lo Could (compra, listas y algunas vistas) se implementa en la entrega 3 si el plan lo permite. La prioridad MoSCoW de cada dominio y funcionalidad está en [README §1.2](../readme.md#12-características-y-funcionalidades-principales).
+El MVP comprometido y la prioridad MoSCoW de cada dominio y funcionalidad están en el [README §1.2](../readme.md#12-características-y-funcionalidades-principales).
 
 ### 5.2. Fuera de alcance (explícito)
 
@@ -198,14 +198,14 @@ Los identificadores (RF-x.y) se usarán para trazar historias de usuario y ticke
 | Dominio | Emite | Reacciona a |
 |---|---|---|
 | `scheduler` | `ClockTicked(now, since)` | — |
-| `identity` (núcleo) | `MemberProfileUpdated`, `NotifyEmailChangeRequested`, `NotifyEmailChanged`, `PasswordChanged` | — |
+| `auth` (núcleo) | `MemberProfileUpdated`, `NotifyEmailChangeRequested`, `NotifyEmailChanged`, `PasswordChanged` | — |
 | `tasks` | `TaskCreated`, `TaskUpdated`, `TaskArchived`, `TaskDeleted` (incluye los ids de sus ocurrencias), `OccurrenceCreated`, `OccurrenceRescheduled`, `OccurrenceCompleted`, `OccurrenceSkipped`, `OccurrenceOverdue`, `OccurrenceCancelled` | `ClockTicked` (atrasadas) |
 | `assignment` | `AssignmentRuleChanged`, `OccurrenceAssigned`, `OccurrenceReassigned`, `AbsenceRegistered`, `AbsenceUpdated`, `AbsenceCancelled` | `OccurrenceCreated` (asignar), `OccurrenceCompleted`, `TaskCreated`, `DeadlineCreated`, `DeadlineDeleted` (balance), `TaskDeleted` (balance y borrado de la regla y las asignaciones) |
 | `deadlines` | `DeadlineCreated`, `DeadlineUpdated`, `DeadlineDeleted`, `DeadlineResolved`, `DeadlineOverdue`, `AppointmentPassed`, `AttachmentAdded`, `AttachmentRemoved` | `ClockTicked` (atrasos y citas pasadas) |
 | `expenses` | `ExpenseRecorded`, `ExpenseUpdated`, `ExpenseDeleted`, `SettlementRecorded`, `DefaultSplitChanged`, `RecurringExpenseDefined`, `RecurringExpenseUpdated`, `RecurringExpenseDeleted`, `ExpenseCategoryChanged` | `ClockTicked` (recurrentes), `ShoppingCompleted` |
 | `shopping` | `ShoppingItemAdded`, `ShoppingItemUpdated`, `ShoppingItemRemoved`, `ShoppingCompleted`, `ShoppingCategoryChanged` | — |
 | `lists` | `ListCreated`, `ListUpdated`, `ListArchived`, `ListDeleted`, `ListItemAdded`, `ListItemUpdated`, `ListItemDeleted`, `ListItemDone` | — |
-| `notifications` | `NotificationScheduled`, `NotificationSent`, `NotificationFailed`, `NotificationCancelled`, `NotificationSnoozed` | Los eventos relevantes para el usuario de todos los dominios: programa avisos (p. ej. `DeadlineCreated`, `OccurrenceCreated`), los cancela o reprograma (p. ej. `DeadlineUpdated`, `DeadlineDeleted`, `OccurrenceCompleted`, `TaskDeleted`, `AppointmentPassed`), avisa al otro miembro de sus acciones, envía la confirmación de `NotifyEmailChangeRequested` y reprograma los pendientes de un miembro en `MemberProfileUpdated` (silencio u hora del digest); `ClockTicked` (digest) |
+| `notifications` | `NotificationScheduled`, `NotificationSent`, `NotificationFailed`, `NotificationCancelled`, `NotificationSnoozed` | Los eventos relevantes para el usuario de todos los dominios: programa avisos (p. ej. `DeadlineCreated`, `OccurrenceCreated`), los cancela o reprograma (p. ej. `DeadlineUpdated`, `DeadlineDeleted`, `OccurrenceCompleted`, `TaskDeleted`, `AppointmentPassed`), avisa al otro miembro de sus acciones, envía la confirmación de `NotifyEmailChangeRequested` y reprograma los pendientes de un miembro en `MemberProfileUpdated` (silencio u hora del digest); `ClockTicked` (digest y recordatorio diario de vencimientos atrasados) |
 
 Cada evento es inmutable e incluye: `event_id`, `occurred_at`, `actor_id` (miembro o `system`) y su payload tipado. Todos se guardan en `domain_events` (auditoría, RNF-SEC-8).
 
@@ -291,7 +291,7 @@ Ninguna. Las decisiones de las revisiones del 24 y el 25-sep-2026 están incorpo
 | **Antelación** | Tiempo antes de un vencimiento o cita en que se envía un recordatorio |
 | **Digest** | Correo resumen diario |
 | **Ventana de silencio** | Franja horaria en que no se envían avisos inmediatos |
-| **Posponer (snooze)** | Posponer un aviso a un momento posterior |
+| **Posponer (snooze)** | Volver a recibir un aviso más tarde (1 h, mañana o 3 días) |
 | **Outbox** | Tabla de notificaciones pendientes de entregar; garantiza que no se pierdan |
 | **Tick** | Ejecución periódica (cada minuto) del motor temporal |
 | **Liquidación** | Pago que compensa el saldo entre miembros y lo deja a 0 |

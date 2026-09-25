@@ -3,7 +3,7 @@
 > **Fuente**: [PRD](./PRD.md) · **Modelo de datos**: [README §3](../readme.md#3-modelo-de-datos)
 > **Formato**: *Como [perfil] quiero [intención] para [beneficio]*, con criterios de aceptación en Gherkin (de 1 a 5 escenarios por historia, según su complejidad).
 > **Criterios de aceptación**: describen **comportamiento observable** por el usuario. Los detalles de implementación (eventos, tablas, estados internos, códigos HTTP) están en el [README](../readme.md) (modelo de datos, API y tickets) y en el catálogo de eventos del [PRD](./PRD.md#8-catálogo-de-eventos-contrato-entre-dominios).
-> **Convención**: los supuestos iniciales (`[ASUMIDO]`) se revisaron y validaron el 24-sep-2026 y ya están incorporados como criterios.
+> **Convención**: los supuestos iniciales (`[ASUMIDO]`) se revisaron y validaron y ya están incorporados como criterios.
 > **Perfiles**: *miembro* (cualquiera de los dos usuarios), *miembro responsable* (el asignado a un elemento), *el otro miembro*, *operador* (quien instala y mantiene el sistema; en la práctica, uno de los miembros).
 > **Estimación**: story points (Fibonacci), a modo orientativo para planificar las entregas.
 
@@ -34,13 +34,13 @@ US-38 (categorías) es compartida por E6 y E7. El test de rutas sin sesión de E
 ```gherkin
 Escenario: Alta del primer miembro
   Dado que no existe ningún miembro
-  Cuando ejecuto "tandem create-user --email lucia@x.com --name Lucía"
+  Cuando ejecuto "tandem create-user --email lucia@example.com --name Lucía"
   Y introduzco la contraseña "tortilla con cebolla los domingos"
   Entonces se crea el miembro "Lucía"
   Y puede iniciar sesión con ese email y esa contraseña, aunque no tenga mayúsculas, números ni símbolos
 
 Esquema del escenario: Contraseña que no cumple la política
-  Dado que estoy dando de alta a Lucía (lucia@x.com)
+  Dado que estoy dando de alta a Lucía (lucia@example.com)
   Cuando introduzco la contraseña "<contraseña>"
   Entonces el comando falla indicando que <motivo>
   Y no se crea el miembro
@@ -59,8 +59,8 @@ Escenario: No se admite un tercer miembro
   Y no se crea ningún miembro
 
 Escenario: Email duplicado
-  Dado que existe un miembro con "lucia@x.com"
-  Cuando intento crear otro con "LUCIA@x.com"
+  Dado que existe un miembro con "lucia@example.com"
+  Cuando intento crear otro con "LUCIA@example.com"
   Entonces el comando falla indicando que el email ya existe (sin distinguir mayúsculas)
 ```
 
@@ -103,7 +103,7 @@ Antecedentes:
 Escenario: Cerrar sesión en el dispositivo actual
   Cuando pulso "Cerrar sesión" en el móvil
   Entonces el móvil vuelve al login
-  Y esa sesión deja de dar acceso aunque alguien hubiera copiado su cookie
+  Y esa sesión deja de dar acceso aunque alguien la hubiera copiado
 
 Escenario: Ver mis sesiones activas
   Cuando abro "Sesiones" en mi perfil
@@ -171,7 +171,7 @@ Escenario: Nueva contraseña no válida
 
 Escenario: Restablecimiento por CLI
   Dado que Álex ha olvidado su contraseña
-  Cuando el operador ejecuta "tandem set-password --email alex@x.com" con una contraseña válida
+  Cuando el operador ejecuta "tandem set-password --email alex@example.com" con una contraseña válida
   Entonces Álex puede entrar con la nueva contraseña
   Y todas sus sesiones anteriores se cierran
 ```
@@ -187,27 +187,27 @@ Escenario: Cambiar el nombre visible
   Entonces los avisos y la web muestran "Lu"
 
 Escenario: El nuevo email se confirma antes de usarse
-  Dado que recibo los avisos en lucia@x.com
-  Cuando cambio mi email de avisos a lucia@nuevo.com
-  Entonces se envía a lucia@nuevo.com un correo con un enlace para confirmarlo
-  Y hasta que lo confirme, los avisos siguen llegando a lucia@x.com
+  Dado que recibo los avisos en lucia@example.com
+  Cuando cambio mi email de avisos a lucia@nuevo.example
+  Entonces se envía a lucia@nuevo.example un correo con un enlace para confirmarlo
+  Y hasta que lo confirme, los avisos siguen llegando a lucia@example.com
 
 Escenario: Confirmar el nuevo email
-  Dado el correo de confirmación enviado a lucia@nuevo.com
+  Dado el correo de confirmación enviado a lucia@nuevo.example
   Cuando abro su enlace y confirmo
-  Entonces los avisos pasan a llegar a lucia@nuevo.com
+  Entonces los avisos pasan a llegar a lucia@nuevo.example
 
 Escenario: Confirmación caducada
   Dado un correo de confirmación recibido hace más de 48 horas
   Cuando abro su enlace
   Entonces veo que ya no es válido
-  Y los avisos siguen llegando a lucia@x.com hasta que pida otro cambio
+  Y los avisos siguen llegando a lucia@example.com hasta que pida otro cambio
 
 Escenario: Un enlace anterior no confirma otra dirección
-  Dado que pedí cambiar a lucia@a.com y después a lucia@b.com
-  Cuando abro el enlace enviado a lucia@a.com
+  Dado que pedí cambiar a lucia@a.example y después a lucia@b.example
+  Cuando abro el enlace enviado a lucia@a.example
   Entonces veo que ya no es válido
-  Y solo el enlace enviado a lucia@b.com puede confirmar el cambio
+  Y solo el enlace enviado a lucia@b.example puede confirmar el cambio
 ```
 
 ---
@@ -267,8 +267,8 @@ Escenario: Solo una ocurrencia abierta
   Y la del lunes 05/10 no se genera ni cuenta como omitida
   Y cuando se resuelve el martes 06/10, la siguiente es el jueves 08/10
 
-Escenario: Cambio de horario de verano
-  Dado una tarea diaria a las 09:00
+Escenario: Cambio de hora de octubre
+  Dada una tarea diaria a las 09:00
   Cuando cambia la hora el último domingo de octubre
   Entonces la ocurrencia de ese día sigue siendo a las 09:00 hora local
 ```
@@ -279,7 +279,7 @@ Escenario: Cambio de horario de verano
 
 ```gherkin
 Escenario: Vista Hoy
-  Dado ocurrencias pendientes para hoy de Lucía y de Álex, otra atrasada y la cita "Dentista Álex" a las 17:00
+  Dadas ocurrencias pendientes para hoy de Lucía y de Álex, otra atrasada y la cita "Dentista Álex" a las 17:00
   Cuando abro "Hoy"
   Entonces veo primero la atrasada y después lo de hoy, ordenado por hora, incluida la cita
   Y cada elemento muestra su responsable
@@ -290,7 +290,7 @@ Escenario: Vista Esta semana
   Entonces los veo agrupados por día
 
 Escenario: Filtrar por mí
-  Dado elementos de Lucía, de Álex y de "cualquiera"
+  Dados elementos de Lucía, de Álex y de "cualquiera"
   Cuando Lucía activa "Solo las mías"
   Entonces solo ve los suyos y los de "cualquiera"
 
@@ -306,19 +306,19 @@ Escenario: Estado vacío
 
 ```gherkin
 Escenario: Completar la tarea de otro
-  Dado una ocurrencia asignada a Álex
+  Dada una ocurrencia asignada a Álex
   Cuando Lucía la marca como hecha
   Entonces queda hecha y consta que la hizo Lucía
   Y ninguno de los dos recibe ya avisos de esa ocurrencia
 
 Escenario: Omitir
-  Dado una ocurrencia pendiente
+  Dada una ocurrencia pendiente
   Cuando la marco como omitida
   Entonces deja de estar pendiente
   Y no cuenta en el balance de nadie
 
 Escenario: Ya resuelta
-  Dado una ocurrencia que Álex ya completó
+  Dada una ocurrencia que Álex ya completó
   Cuando Lucía intenta completarla desde una pantalla sin actualizar
   Entonces ve "Ya estaba hecha por Álex" y no cambia nada
 ```
@@ -345,13 +345,13 @@ Escenario: Última vez
 
 ```gherkin
 Escenario: Editar la recurrencia
-  Dado una tarea semanal con una ocurrencia pendiente para el jueves
+  Dada una tarea semanal con una ocurrencia pendiente para el jueves
   Cuando la cambio a los viernes
   Entonces la ocurrencia pendiente se mueve al próximo viernes
   Y el historial no cambia
 
 Escenario: Archivar
-  Dado una tarea con una ocurrencia pendiente
+  Dada una tarea con una ocurrencia pendiente
   Cuando la archivo
   Entonces su ocurrencia pendiente se cancela y no se generan más
   Y desaparece de "Hoy" pero sigue en el historial
@@ -383,13 +383,13 @@ Escenario: Pasa a atrasada al terminar el día
   Entonces aparece como atrasada, arriba del todo
 
 Escenario: En el digest
-  Dado una tarea atrasada
+  Dada una tarea atrasada
   Y un miembro con el digest activo
   Cuando llega su hora de digest
   Entonces la tarea aparece en el apartado de atrasadas, cada día hasta que se resuelva
 
 Escenario: Sin avisos repetidos
-  Dado una tarea atrasada
+  Dada una tarea atrasada
   Cuando pasan los días sin resolverla
   Entonces no se envían avisos inmediatos adicionales por estar atrasada
 ```
@@ -409,12 +409,12 @@ Escenario: Alternar
   Entonces se asignan a Álex, Lucía y Álex
 
 Escenario: Fija
-  Dado una tarea en modo "fija" para Lucía
+  Dada una tarea en modo "fija" para Lucía
   Cuando se generan sus ocurrencias
   Entonces todas se asignan a Lucía
 
 Escenario: Cualquiera
-  Dado una tarea en modo "cualquiera"
+  Dada una tarea en modo "cualquiera"
   Cuando se generan sus ocurrencias
   Entonces no tienen responsable
   Y los avisos se envían a ambos sin destacar a nadie
@@ -463,25 +463,25 @@ Escenario: Ambos ausentes
 
 ```gherkin
 Escenario: Me lo quedo
-  Dado una ocurrencia asignada a Álex
+  Dada una ocurrencia asignada a Álex
   Cuando Lucía pulsa "Me lo quedo"
   Entonces pasa a Lucía
   Y la siguiente ocurrencia de la rotación sigue siendo de quien le tocaba
   Y Álex recibe un aviso
 
 Escenario: Me lo quedo en una tarea de cualquiera
-  Dado una ocurrencia de "cualquiera", sin responsable
+  Dada una ocurrencia de "cualquiera", sin responsable
   Cuando Lucía pulsa "Me lo quedo"
   Entonces Lucía pasa a ser su responsable
   Y Álex recibe un aviso
 
 Escenario: Ceder
-  Dado una ocurrencia asignada a mí
+  Dada una ocurrencia asignada a mí
   Cuando la cedo
   Entonces se asigna al otro miembro y se le avisa
 
 Escenario: Los dos a la vez
-  Dado una ocurrencia de "cualquiera"
+  Dada una ocurrencia de "cualquiera"
   Cuando Lucía y Álex pulsan "Me lo quedo" casi a la vez
   Entonces se queda la ocurrencia quien lo pulsó primero
   Y el otro ve "Ya la ha asumido Lucía" (o Álex) sin que cambie nada
@@ -503,7 +503,7 @@ Escenario: Las omitidas no cuentan
   Entonces no suman para ninguno
 
 Escenario: Cuenta quien la hace
-  Dado una ocurrencia asignada a Álex que completó Lucía
+  Dada una ocurrencia asignada a Álex que completó Lucía
   Cuando abro el balance
   Entonces suma para Lucía
 
@@ -538,12 +538,12 @@ Escenario: Ampliar una ausencia
   Y Lucía recibe un aviso con los cambios
 
 Escenario: Las reasignaciones manuales se respetan
-  Dado una ocurrencia que Lucía se quedó con "Me lo quedo" durante la ausencia
+  Dada una ocurrencia que Lucía se quedó con "Me lo quedo" durante la ausencia
   Cuando Álex cancela la ausencia
   Entonces esa ocurrencia sigue siendo de Lucía
 
 Escenario: Ausencia ya terminada
-  Dado una ausencia cuyo último día ya pasó
+  Dada una ausencia cuyo último día ya pasó
   Cuando intento modificarla o cancelarla
   Entonces no se permite: queda en el historial
 ```
@@ -611,7 +611,7 @@ Escenario: Vencimiento resuelto antes del aviso
   Cuando llega el 13/11
   Entonces no se envía el recordatorio de 7 días
 
-Escenario: Antelación ya vencida al crear o mover
+Escenario: Antelación ya vencida al crear
   Dado que son las 15:00
   Cuando creo la cita "Médico" para hoy a las 16:30, con recordatorios de 1 día y 2 horas
   Entonces ambos reciben enseguida un único aviso "Hoy a las 16:30: Médico"
@@ -634,7 +634,7 @@ Escenario: Renovación anual
   Entonces se crea "Seguro hogar" para el 15/03/2028 con las mismas antelaciones
 
 Escenario: Una cita pasada se cierra sola
-  Dado la cita "Dentista Álex" el 05/10 a las 17:00
+  Dada la cita "Dentista Álex" el 05/10 a las 17:00
   Cuando pasan las 17:00
   Entonces pasa a "Pasadas" sin que nadie haga nada
   Y no genera recordatorios de atraso
@@ -676,7 +676,7 @@ Escenario: Cambiar la fecha
   Y el de 1 día antes se vuelve a enviar el 11/10 a las 17:00
 
 Escenario: Quitar una antelación
-  Dado una cita con recordatorios 1 día y 2 horas antes
+  Dada una cita con recordatorios 1 día y 2 horas antes
   Cuando quito el de 2 horas
   Entonces ese recordatorio ya no se envía
 
@@ -687,7 +687,7 @@ Escenario: Cambiar el responsable
   Y Lucía recibe un aviso de que ahora es la responsable
 
 Escenario: Borrar
-  Dado la cita "Concierto" con recordatorios pendientes
+  Dada la cita "Concierto" con recordatorios pendientes
   Cuando la borro y confirmo
   Entonces desaparece
   Y no se envía ninguno de sus recordatorios
@@ -699,23 +699,23 @@ Escenario: Borrar
 
 ```gherkin
 Escenario: Subir un billete
-  Dado la cita "Concierto" del 15/11
+  Dada la cita "Concierto" del 15/11
   Cuando subo "entradas.pdf" de 800 KB
   Entonces queda asociada a la cita con su nombre original, su tamaño y quién la subió
 
 Escenario: Tipo no permitido
-  Dado la cita "Concierto"
+  Dada la cita "Concierto"
   Cuando subo "factura.exe" renombrado a "factura.pdf"
   Entonces el sistema detecta por su contenido que no es un PDF
   Y lo rechaza con "Formato no permitido (PDF, JPEG, PNG o WebP)"
 
 Escenario: Tamaño excesivo
-  Dado la cita "Concierto"
+  Dada la cita "Concierto"
   Cuando subo un archivo de 12 MB
   Entonces se rechaza con "El archivo supera los 10 MB"
 
 Escenario: Límite de adjuntos
-  Dado una cita con 10 adjuntos
+  Dada una cita con 10 adjuntos
   Cuando subo otro
   Entonces se rechaza indicando el máximo de 10 por elemento
 ```
@@ -726,7 +726,7 @@ Escenario: Límite de adjuntos
 
 ```gherkin
 Escenario: Descargar
-  Dado la cita "Concierto" con "entradas.pdf"
+  Dada la cita "Concierto" con "entradas.pdf"
   Cuando lo descargo con la sesión iniciada
   Entonces recibo el archivo con su nombre original
 
@@ -737,18 +737,18 @@ Escenario: Acceso sin sesión
   Y no se revela si el archivo existe
 
 Escenario: Aviso con adjuntos
-  Dado la cita "Concierto" con 2 adjuntos
+  Dada la cita "Concierto" con 2 adjuntos
   Cuando llega el recordatorio de 1 día antes
   Entonces el correo indica "2 adjuntos" con un enlace a la cita en la web
   Y los archivos no se incluyen en el correo
 
 Escenario: Borrar un adjunto
-  Dado la cita "Concierto" con "entradas.pdf"
+  Dada la cita "Concierto" con "entradas.pdf"
   Cuando borro el adjunto
   Entonces desaparece de la cita y ya no se puede descargar
 
 Escenario: Borrar la cita borra sus adjuntos
-  Dado la cita "Concierto" con 2 adjuntos
+  Dada la cita "Concierto" con 2 adjuntos
   Cuando borro la cita (US-41)
   Entonces sus adjuntos ya no se pueden descargar
 ```
@@ -758,14 +758,14 @@ Escenario: Borrar la cita borra sus adjuntos
 ## E5 · Motor temporal y avisos
 
 ### US-19 · Todo lo programado ocurre a su hora, también tras una caída
-**Como** miembro **quiero** que los avisos, los atrasos y (cuando exista el dominio de gastos) los gastos recurrentes lleguen a su hora sin que nadie tenga que hacer nada, incluso si el servicio se ha reiniciado, **para** poder confiar en que el sistema se acuerda por nosotros.
+**Como** miembro **quiero** que los avisos, los atrasos y (cuando exista la gestión de gastos) los gastos recurrentes lleguen a su hora sin que nadie tenga que hacer nada, incluso si el servicio se ha reiniciado, **para** poder confiar en que el sistema se acuerda por nosotros.
 `Must · 5 pts · RF-9.1…RF-9.5, RNF-REL-1`
 
 ```gherkin
 Escenario: Puntualidad
   Dado un aviso previsto para las 10:00, fuera de mi ventana de silencio
   Cuando llegan las 10:00
-  Entonces se entrega al servidor de correo antes de las 10:02 (objetivo: p95 ≤ 2 min, PRD §4.1)
+  Entonces se entrega al servidor de correo antes de las 10:02
 
 Escenario: Recuperación tras una caída
   Dado que el servicio estuvo parado cuando tocaba el aviso de "Sacar la basura" y el recordatorio de la ITV
@@ -815,7 +815,7 @@ Escenario: Tarea ya hecha antes de su hora
 Escenario: Contenido del digest
   Dado que tengo el digest activado a las 08:00
   Cuando llegan las 08:00
-  Entonces recibo un correo con: lo de hoy de ambos, lo atrasado, los vencimientos y citas de los próximos 7 días, el saldo de gastos (desde la entrega 3) y las novedades desde el último digest: lo que ha creado el otro miembro (tareas, vencimientos, citas, gastos, liquidaciones, elementos de listas) y los gastos generados automáticamente
+  Entonces recibo un correo con: lo de hoy de ambos, lo atrasado, los vencimientos y citas de los próximos 7 días, el saldo de gastos (cuando exista la gestión de gastos) y las novedades desde el último digest: lo que ha creado el otro miembro (tareas, vencimientos, citas, gastos, liquidaciones, elementos de listas) y los gastos generados automáticamente
 
 Escenario: Digest sin contenido
   Dado que tengo el digest activado
@@ -862,7 +862,7 @@ Escenario: Recordatorio que llegaría después del evento
   Entonces lo recibo a las 21:59 del día anterior, antes de que empiece el silencio
 ```
 
-### US-23 · Posponer un aviso (snooze)
+### US-23 · Posponer un aviso
 **Como** miembro **quiero** posponer un aviso 1 hora, a mañana o 3 días **para** que me lo recuerde cuando pueda atenderlo.
 `Must · 2 pts · RF-8.5`
 
@@ -897,9 +897,9 @@ Esquema del escenario: Otras acciones desde el correo
   Entonces <resultado>
 
   Ejemplos:
-    | botón        | resultado                                                   |
-    | Omitir       | la ocurrencia queda omitida y no cuenta en el balance        |
-    | Posponer     | elijo "Mañana" y el aviso vuelve mañana a mi hora de digest  |
+    | botón        | resultado                                                      |
+    | Omitir       | la ocurrencia queda omitida y no cuenta en el balance          |
+    | Posponer     | elijo "Mañana" y el aviso vuelve mañana a mi hora de digest    |
     | Me lo quedo  | la ocurrencia pasa a ser mía y el otro miembro recibe un aviso |
     | Resuelto     | el vencimiento queda resuelto y no se envían más recordatorios |
 
@@ -1059,7 +1059,7 @@ Escenario: Eliminar
 
 ```gherkin
 Escenario: Filtro
-  Dado gastos de varios meses y categorías
+  Dados gastos de varios meses y categorías
   Cuando filtro por "septiembre" y la categoría "Supermercado"
   Entonces veo solo esos gastos y el total de la selección
 ```
@@ -1106,7 +1106,7 @@ Escenario: Cambiar el reparto por defecto
   Y el otro miembro recibe un aviso del cambio
 
 Escenario: No afecta a lo ya registrado
-  Dado gastos ya registrados con el reparto anterior
+  Dados gastos ya registrados con el reparto anterior
   Cuando cambio el reparto por defecto
   Entonces conservan su reparto y el saldo no cambia
 
@@ -1131,12 +1131,12 @@ Escenario: Valor no válido
 
 ```gherkin
 Escenario: Añadir artículo
-  Dado la lista de la compra
+  Dada la lista de la compra
   Cuando añado "Leche" con cantidad "x2" en la categoría "Lácteos"
   Entonces aparece en la lista dentro de Lácteos, en el orden de las categorías
 
 Escenario: Categoría por defecto
-  Dado la lista de la compra
+  Dada la lista de la compra
   Cuando añado "Pilas" sin categoría
   Entonces se guarda en "Otros"
 
@@ -1171,7 +1171,7 @@ Escenario: Marcar y desmarcar
 
 ```gherkin
 Escenario: Cerrar con importe
-  Dado 5 artículos en la lista, 4 marcados
+  Dados 5 artículos en la lista, 4 marcados
   Cuando cierro la compra con un total de 47,30 €
   Entonces los 4 marcados salen de la lista y quedan en el historial de esa compra
   Y el artículo no marcado sigue en la lista
@@ -1179,7 +1179,7 @@ Escenario: Cerrar con importe
   Y el otro miembro recibe un aviso del gasto
 
 Escenario: Cerrar sin importe
-  Dado artículos marcados en la lista
+  Dados artículos marcados en la lista
   Cuando cierro la compra sin total
   Entonces no se registra ningún gasto
 
@@ -1195,7 +1195,7 @@ Escenario: Sin artículos marcados
 
 ```gherkin
 Escenario: Categorías precargadas
-  Dado una instalación nueva
+  Dada una instalación nueva
   Cuando abro las categorías de gasto
   Entonces veo Hogar, Supermercado, Suministros, Ocio, Transporte, Salud y Otros
 
@@ -1210,7 +1210,7 @@ Escenario: Reordenar la compra
   Entonces la lista de la compra muestra Panadería primero
 
 Escenario: Archivar una categoría en uso
-  Dado la categoría "Transporte" con gastos registrados
+  Dada la categoría "Transporte" con gastos registrados
   Cuando la archivo
   Entonces deja de ofrecerse para nuevos gastos
   Y los gastos existentes la conservan en el historial
@@ -1241,7 +1241,7 @@ Escenario: Nombre duplicado
   Entonces veo un error de nombre duplicado
 
 Escenario: Añadir elemento y aviso en el digest
-  Dado la lista "Pelis"
+  Dada la lista "Pelis"
   Cuando Álex añade "Perfect Days" con un enlace
   Entonces aparece en la lista como pendiente
   Y Lucía lo verá en su próximo digest como novedad
@@ -1279,19 +1279,19 @@ Escenario: Borrar un elemento
   Entonces desaparece de la lista
 
 Escenario: Renombrar una lista
-  Dado la lista "Pelis"
+  Dada la lista "Pelis"
   Cuando la renombro a "Cine"
   Entonces conserva todos sus elementos
   Y no se admite un nombre que ya use otra lista
 
 Escenario: Archivar una lista
-  Dado la lista "Viaje a Japón", ya terminada
+  Dada la lista "Viaje a Japón", ya terminada
   Cuando la archivo
   Entonces deja de mostrarse en "Listas"
   Y puedo consultarla en "Archivadas"
 
 Escenario: Borrar una lista
-  Dado una lista creada por error
+  Dada una lista creada por error
   Cuando la borro y confirmo
   Entonces desaparece junto con todos sus elementos
 ```
@@ -1321,7 +1321,7 @@ Escenario: Falla en cada ejecución
   Entonces el operador recibe la misma alerta
 
 Escenario: Recuperación
-  Dado una alerta activa
+  Dada una alerta activa
   Cuando vuelve a haber una ejecución correcta
   Entonces el monitor da la alerta por resuelta y lo notifica
 ```
@@ -1332,7 +1332,7 @@ Escenario: Recuperación
 
 ```gherkin
 Esquema del escenario: Métrica calculada
-  Dado al menos cuatro semanas de uso real
+  Dadas al menos cuatro semanas de uso real
   Cuando ejecuto "tandem metrics --since 2026-10-26"
   Entonces veo <métrica> con su valor y si cumple el umbral <umbral>
 
@@ -1346,7 +1346,7 @@ Esquema del escenario: Métrica calculada
     | retraso de envío de los avisos (p95)                     | ≤ 2 min           |
 
 Escenario: Sin datos suficientes
-  Dado una instalación con menos de cuatro semanas de uso
+  Dada una instalación con menos de cuatro semanas de uso
   Cuando ejecuto "tandem metrics"
   Entonces veo las métricas con la advertencia de que el periodo es insuficiente (PRD §4.1)
 ```
